@@ -50,12 +50,15 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
         $stmt->bind_param("i", $delete_id);
         $stmt->execute();
         $stmt->close();
+
+        // Reset auto-increment value
+        $conn->query("ALTER TABLE admins AUTO_INCREMENT = 1");
     }
 }
 
 // Fetch all admins (now also fetch password)
 $admins = [];
-$result = $conn->query("SELECT id, username, password, is_superadmin FROM admins ORDER BY is_superadmin DESC, id ASC");
+$result = $conn->query("SELECT id, username, password, is_superadmin, last_signed_in, last_signed_out FROM admins ORDER BY is_superadmin DESC, id ASC");
 while ($row = $result->fetch_assoc()) {
     $admins[] = $row;
 }
@@ -126,6 +129,10 @@ $conn->close();
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
                     Sales
                 </a>
+                <a href="reports.php" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold <?= ($current_page == 'reports') ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50 text-gray-700' ?>">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Reports
+                </a>
                 <a href="inventory.php" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold <?= ($current_page == 'inventory') ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50 text-gray-700' ?>">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4M4 7l8 4.5M12 11.5V21M20 7l-8 4.5"></path></svg>
                     Inventory
@@ -169,6 +176,8 @@ $conn->close();
                             <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Username</th>
                             <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Password</th>
                             <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Superadmin</th>
+                            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Last Signed In</th>
+                             <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Last Signed Out</th>
                             <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Action</th>
                         </tr>
                     </thead>
@@ -179,6 +188,8 @@ $conn->close();
                             <td class="px-4 py-2"><?= htmlspecialchars($admin['username']) ?></td>
                             <td class="px-4 py-2 font-mono"><?= htmlspecialchars($admin['password']) ?></td>
                             <td class="px-4 py-2"><?= $admin['is_superadmin'] ? '<span class="text-green-600 font-semibold">Yes</span>' : 'No' ?></td>
+                            <td class="px-4 py-2"><?= htmlspecialchars($admin['last_signed_in'] ?? 'Never') ?></td>
+                            <td class="px-4 py-2"><?= htmlspecialchars($admin['last_signed_out'] ?? 'Never') ?></td>
                             <td class="px-4 py-2">
                                 <?php if (!$admin['is_superadmin']): ?>
                                     <a href="?delete=<?= $admin['id'] ?>" class="text-red-600 hover:underline font-semibold" onclick="return confirm('Delete this admin?')">Delete</a>

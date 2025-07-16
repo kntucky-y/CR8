@@ -28,20 +28,18 @@ if ($conn->connect_error) {
 $conn->begin_transaction();
 
 try {
-    // Safety Check: See if the artist has any products.
-    $check_sql = "SELECT COUNT(*) as product_count FROM products WHERE artist_id = ?";
-    $check_stmt = $conn->prepare($check_sql);
-    $check_stmt->bind_param("i", $artist_id);
-    $check_stmt->execute();
-    $product_count = $check_stmt->get_result()->fetch_assoc()['product_count'];
-    $check_stmt->close();
+    // --- REMOVED ---
+    // The old safety check that prevented revocation is no longer needed.
 
-    if ($product_count > 0) {
-        // If they have products, do not proceed. Throw an error.
-        throw new Exception("Cannot revoke privileges. This artist still has {$product_count} product(s) listed. Please delete or reassign them first.");
-    }
+    // --- NEW: Step 1 ---
+    // Deactivate all of the artist's products by setting is_active to 0.
+    $deactivate_sql = "UPDATE products SET is_active = 0 WHERE artist_id = ?";
+    $deactivate_stmt = $conn->prepare($deactivate_sql);
+    $deactivate_stmt->bind_param("i", $artist_id);
+    $deactivate_stmt->execute();
+    $deactivate_stmt->close();
 
-    // Get the user_id associated with this artist profile before deleting it
+    // --- Step 2: Get the user_id associated with this artist profile ---
     $user_id_sql = "SELECT user_id FROM artists WHERE id = ?";
     $user_id_stmt = $conn->prepare($user_id_sql);
     $user_id_stmt->bind_param("i", $artist_id);
@@ -53,24 +51,23 @@ try {
     $user_id = $user_id_result->fetch_assoc()['user_id'];
     $user_id_stmt->close();
 
-    // If no products, proceed with demotion
-    // 1. Delete the entry from the 'artists' table
-    $delete_sql = "DELETE FROM artists WHERE id = ?";
-    $delete_stmt = $conn->prepare($delete_sql);
-    $delete_stmt->bind_param("i", $artist_id);
-    $delete_stmt->execute();
-    $delete_stmt->close();
+    // --- Step 3: "Soft delete" the artist by revoking their status ---
+    $revoke_sql = "UPDATE artists SET status = 'revoked' WHERE id = ?";
+    $revoke_stmt = $conn->prepare($revoke_sql);
+    $revoke_stmt->bind_param("i", $artist_id);
+    $revoke_stmt->execute();
+    $revoke_stmt->close();
 
-    // 2. Update the user's role in the 'users' table back to 'customer'
-    $update_sql = "UPDATE users SET role = 'customer' WHERE id = ?";
-    $update_stmt = $conn->prepare($update_sql);
-    $update_stmt->bind_param("i", $user_id);
-    $update_stmt->execute();
-    $update_stmt->close();
+    // --- Step 4: Update the user's role back to 'customer' ---
+    $update_user_sql = "UPDATE users SET role = 'customer' WHERE id = ?";
+    $update_user_stmt = $conn->prepare($update_user_sql);
+    $update_user_stmt->bind_param("i", $user_id);
+    $update_user_stmt->execute();
+    $update_user_stmt->close();
 
     // If all steps succeeded, commit the changes
     $conn->commit();
-    echo json_encode(['success' => true, 'message' => 'Artist privileges have been revoked.']);
+    echo json_encode(['success' => true, 'message' => 'Artist has been revoked and all their products have been deactivated.']);
 
 } catch (Exception $e) {
     // If any step failed, roll back all database changes

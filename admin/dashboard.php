@@ -3,6 +3,17 @@ session_start();
 
 // Handle logout via GET parameter
 if (isset($_GET['logout'])) {
+    // Update last_signed_out in the database
+    if (isset($_SESSION['admin_id'])) {
+        $conn = new mysqli('localhost', 's24102191_cr8db', 'cr8db!!!', 's24102191_cr8db');
+        if (!$conn->connect_error) {
+            $stmt = $conn->prepare("UPDATE admins SET last_signed_out = NOW() WHERE id = ?");
+            $stmt->bind_param("i", $_SESSION['admin_id']);
+            $stmt->execute();
+            $stmt->close();
+            $conn->close();
+        }
+    }
     session_unset();
     session_destroy();
     header("Location: index.php");
@@ -169,7 +180,7 @@ $conn->close();
         </button>
     </header>
     <!-- Sidebar -->
-    <aside class="w-64 bg-white border-r flex-shrink-0 hidden md:flex flex-col justify-between">
+    <aside class="sticky top-0 h-screen z-40 w-64 bg-white border-r flex-shrink-0 hidden md:flex flex-col justify-between">
         <div>
             <div class="flex items-center gap-2 px-6 py-6 border-b">
                 <img src="../img/cr8-logo.png" alt="Logo" class="w-10 h-10 rounded-full">
@@ -203,6 +214,10 @@ $conn->close();
                 <a href="sales.php" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold <?= ($current_page == 'sales') ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50 text-gray-700' ?>">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
                     Sales
+                </a>
+                <a href="reports.php" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold <?= ($current_page == 'reports') ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50 text-gray-700' ?>">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Reports
                 </a>
                 <a href="inventory.php" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold <?= ($current_page == 'inventory') ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50 text-gray-700' ?>">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4M4 7l8 4.5M12 11.5V21M20 7l-8 4.5"></path></svg>
@@ -363,4 +378,3 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 </body>
 </html>
-

@@ -13,7 +13,7 @@ $data = json_decode(file_get_contents('php://input'), true);
 $order_id = $data['order_id'] ?? null;
 $status = $data['status'] ?? null;
 
-if (!$order_id || !in_array($status, ['Processing', 'Shipped', 'Delivered', 'Cancelled'])) {
+if (!$order_id || !in_array($status, ['Processing', 'Shipped', 'Completed', 'Cancelled'])) {
     http_response_code(400); // Bad Request
     echo json_encode(['success' => false, 'error' => 'Invalid data provided.']);
     exit;

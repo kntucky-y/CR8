@@ -62,5 +62,10 @@ $items_stmt->execute();
 $response['items'] = $items_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $items_stmt->close();
 
+// Prepend the full domain path to the proof of payment image using the correct variable name
+if (!empty($response['details']['proof_path'])) {
+    $response['details']['proof_path'] = 'https://cr8.dcism.org/' . $response['details']['proof_path'];
+}
+
 $conn->close();
 echo json_encode($response);

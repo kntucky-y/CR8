@@ -61,15 +61,33 @@ try {
         $stmt->execute();
         $stmt->close();
 
-        // Create a new entry in the 'artists' table
-        $stmt = $conn->prepare("INSERT INTO artists (user_id, artist_name) VALUES (?, ?) ON DUPLICATE KEY UPDATE artist_name = VALUES(artist_name)");
-        $stmt->bind_param("is", $user_id, $artist_name);
-        $stmt->execute();
-        $stmt->close();
+        // --- NEW LOGIC: Check if an artist profile already exists ---
+        $check_stmt = $conn->prepare("SELECT id FROM artists WHERE user_id = ?");
+        $check_stmt->bind_param("i", $user_id);
+        $check_stmt->execute();
+        $artist_result = $check_stmt->get_result();
+        $check_stmt->close();
+
+        if ($artist_result->num_rows > 0) {
+            // --- Artist EXISTS: Reactivate their profile ---
+            $existing_artist = $artist_result->fetch_assoc();
+            $artist_id = $existing_artist['id'];
+            
+            $update_stmt = $conn->prepare("UPDATE artists SET status = 'active', artist_name = ? WHERE id = ?");
+            $update_stmt->bind_param("si", $artist_name, $artist_id);
+            $update_stmt->execute();
+            $update_stmt->close();
+        } else {
+            // --- Artist does NOT exist: Create a new profile ---
+            $insert_stmt = $conn->prepare("INSERT INTO artists (user_id, artist_name, status) VALUES (?, ?, 'active')");
+            // FIXED: Added the missing $user_id parameter
+            $insert_stmt->bind_param("is", $user_id, $artist_name);
+            $insert_stmt->execute();
+            $insert_stmt->close();
+        }
     }
     
-    // *** NEW: Delete the application from the inbox after processing ***
-    // This runs for both 'accepted' and 'rejected' statuses.
+    // Delete the application from the inbox after processing
     $stmt = $conn->prepare("DELETE FROM artist_applications WHERE id = ?");
     $stmt->bind_param("i", $application_id);
     $stmt->execute();
@@ -87,6 +105,7 @@ try {
 }
 
 // --- 5. Final Success Response ---
-echo json_encode(['success' => true, 'message' => "Database updated successfully. Application has been processed and removed from inbox."]);
+echo json_encode(['success' => true, 'message' => "Database updated successfully. Application has been processed."]);
 
 $conn->close();
+?>

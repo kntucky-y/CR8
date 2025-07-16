@@ -15,28 +15,39 @@ if ($conn->connect_error) {
     die("Database connection failed: " . $conn->connect_error);
 }
 
-// Fetch artist applications
-$artist_applications = [];
-$result = $conn->query("SELECT * FROM artist_applications ORDER BY submitted_at DESC");
-if ($result) {
-    while ($row = $result->fetch_assoc()) {
-        $artist_applications[] = $row;
-    }
-}
-
-// Fetch selected artist application for detail view
+// Fetch selected artist application for detail view and mark as read
 $selected_artist = null;
 if (isset($_GET['view'])) {
     $view_id = intval($_GET['view']);
     
+    // Fetch the single application
     $stmt = $conn->prepare("SELECT * FROM artist_applications WHERE id = ?");
     $stmt->bind_param("i", $view_id);
     $stmt->execute();
     $result = $stmt->get_result();
+    
     if ($result->num_rows > 0) {
         $selected_artist = $result->fetch_assoc();
+
+        // If the status is 'Unread', update it to 'Read'
+        if ($selected_artist['status'] == 'Unread') {
+            $update_stmt = $conn->prepare("UPDATE artist_applications SET status = 'Read' WHERE id = ?");
+            $update_stmt->bind_param("i", $view_id);
+            $update_stmt->execute();
+            $update_stmt->close();
+        }
     }
     $stmt->close();
+}
+
+
+// Fetch all artist applications to display in the list
+$artist_applications = [];
+$result = $conn->query("SELECT id, full_name, product_desc, submitted_at, status FROM artist_applications ORDER BY submitted_at DESC");
+if ($result) {
+    while ($row = $result->fetch_assoc()) {
+        $artist_applications[] = $row;
+    }
 }
 
 $conn->close();
@@ -52,10 +63,14 @@ $conn->close();
     <link rel="icon" href="img/favicon.png" type="image/png">
     <style>
         body { font-family: 'Outfit', sans-serif; }
+        /* Style for the currently selected application */
+        .message-active {
+            background-color: #f3e8ff; /* Light purple */
+            border-right: 4px solid #7A1CAC; /* Darker purple */
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col md:flex-row">
-    <!-- Mobile Header/Navbar -->
     <header class="flex items-center justify-between bg-white border-b px-4 py-3 md:hidden">
         <div class="flex items-center gap-2">
             <img src="img/cr8-logo.png" alt="Logo" class="w-8 h-8 rounded-full">
@@ -67,7 +82,6 @@ $conn->close();
             </svg>
         </button>
     </header>
-    <!-- Sidebar -->
     <aside class="w-64 bg-white border-r flex-shrink-0 hidden md:flex flex-col justify-between">
         <div>
             <div class="flex items-center gap-2 px-6 py-6 border-b">
@@ -103,6 +117,10 @@ $conn->close();
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
                     Sales
                 </a>
+                <a href="reports.php" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold <?= ($current_page == 'reports') ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50 text-gray-700' ?>">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Reports
+                </a>
                 <a href="inventory.php" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold <?= ($current_page == 'inventory') ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50 text-gray-700' ?>">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4M4 7l8 4.5M12 11.5V21M20 7l-8 4.5"></path></svg>
                     Inventory
@@ -122,15 +140,12 @@ $conn->close();
             </a>
         </div>
     </aside>
-    <!-- Overlay for mobile sidebar -->
     <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-30 z-30 hidden md:hidden"></div>
-    <!-- Main Content -->
     <main class="flex-1 flex flex-col min-h-screen pt-16 md:pt-0">
         <header class="flex items-center justify-between px-8 py-4 border-b bg-white">
             <h1 class="font-bold text-2xl text-gray-800">Artist Applications</h1>
         </header>
         <section class="flex-1 flex bg-white">
-            <!-- Left: Application List -->
             <div class="w-96 border-r flex flex-col">
                 <div class="p-4 border-b">
                     <h2 class="font-bold text-lg">Pending Applications <span class="bg-purple-100 text-purple-700 text-xs px-2 py-1 rounded-full"><?= count($artist_applications) ?></span></h2>
@@ -148,6 +163,9 @@ $conn->close();
                                     <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/></svg>
                                 </span>
                                 <span class="font-bold text-sm"><?= htmlspecialchars($app['full_name']) ?></span>
+                                <?php if ($app['status'] == 'Unread'): ?>
+                                    <span class="w-2.5 h-2.5 bg-purple-500 rounded-full" title="Unread"></span>
+                                <?php endif; ?>
                                 <span class="ml-auto text-xs text-gray-400"><?= date('M d, Y', strtotime($app['submitted_at'])) ?></span>
                             </div>
                             <div class="text-xs text-gray-500 truncate pl-7"><?= htmlspecialchars($app['product_desc']) ?></div>
@@ -156,7 +174,6 @@ $conn->close();
                     <?php endif; ?>
                 </div>
             </div>
-            <!-- Right: Application Details -->
             <div class="flex-1 flex flex-col p-8 bg-gray-50 overflow-y-auto">
                 <?php if ($selected_artist): ?>
                     <div class="bg-white shadow-xl rounded-xl p-8 w-full max-w-3xl mx-auto">
@@ -170,7 +187,6 @@ $conn->close();
                             <div><label class="text-xs text-gray-500 font-semibold">Email</label><p><a href="mailto:<?= htmlspecialchars($selected_artist['email']) ?>" class="text-blue-600"><?= htmlspecialchars($selected_artist['email']) ?></a></p></div>
                             <div><label class="text-xs text-gray-500 font-semibold">Contact</label><p><?= htmlspecialchars($selected_artist['contact_number']) ?></p></div>
                             <div><label class="text-xs text-gray-500 font-semibold">Portfolio</label><p><a href="<?= htmlspecialchars($selected_artist['portfolio']) ?>" class="text-blue-600 underline" target="_blank">View Portfolio</a></p></div>
-                            <div><label class="text-xs text-gray-500 font-semibold">Medium</label><p><?= htmlspecialchars($selected_artist['medium']) ?></p></div>
                         </div>
                         <div class="mt-4"><label class="text-xs text-gray-500 font-semibold">Product Description</label><div class="bg-gray-100 rounded p-4 mt-1 text-sm"><?= nl2br(htmlspecialchars($selected_artist['product_desc'])) ?></div></div>
                     </div>
@@ -182,7 +198,6 @@ $conn->close();
                 <?php endif; ?>
             </div>
         </section>
-        <!-- Drop Zones -->
         <footer class="flex gap-4 p-4 border-t bg-white">
             <div id="drop-accepted" class="flex-1 py-4 rounded-lg text-center font-semibold bg-green-50 text-green-700 border-2 border-green-200 border-dashed cursor-pointer hover:bg-green-100" ondragover="event.preventDefault(); this.classList.add('bg-green-100')" ondragleave="this.classList.remove('bg-green-100')" ondrop="handleDrop(event, 'accepted')">
                 <span class="inline-flex items-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Drag to Accept</span>

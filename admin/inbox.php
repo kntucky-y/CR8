@@ -15,28 +15,51 @@ if ($conn->connect_error) {
     die("Database connection failed: " . $conn->connect_error);
 }
 
-// Fetch messages from the 'messages' table
+// --- Mark a message as Read when it is viewed ---
+$selected_message = null;
+if (isset($_GET['view'])) {
+    $view_id = intval($_GET['view']);
+    
+    // Prepare a statement to fetch the selected message
+    $stmt = $conn->prepare("SELECT id, name, email, message, created_at, status FROM messages WHERE id = ?");
+    $stmt->bind_param("i", $view_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows > 0) {
+        $selected_message = $result->fetch_assoc();
+        
+        // If the message is currently 'Unread', update it to 'Read'
+        if ($selected_message['status'] == 'Unread') {
+            $update_stmt = $conn->prepare("UPDATE messages SET status = 'Read' WHERE id = ?");
+            $update_stmt->bind_param("i", $view_id);
+            $update_stmt->execute();
+            $update_stmt->close();
+        }
+    }
+    $stmt->close();
+}
+
+// --- Delete a message if the delete action is triggered ---
+if (isset($_GET['delete'])) {
+    $delete_id = intval($_GET['delete']);
+    $delete_stmt = $conn->prepare("DELETE FROM messages WHERE id = ?");
+    $delete_stmt->bind_param("i", $delete_id);
+    $delete_stmt->execute();
+    $delete_stmt->close();
+    
+    // Redirect to the base inbox page to prevent re-deletion on refresh
+    header("Location: inbox.php");
+    exit;
+}
+
+// Fetch all messages to display in the list, including their status
 $messages = [];
-// Assuming your table is named 'messages' with these columns. Adjust if necessary.
-$result = $conn->query("SELECT id, name, email, message, created_at FROM messages ORDER BY created_at DESC");
+$result = $conn->query("SELECT id, name, email, message, created_at, status FROM messages ORDER BY created_at DESC");
 if ($result) {
     while ($row = $result->fetch_assoc()) {
         $messages[] = $row;
     }
-}
-
-// Fetch selected message for detail view
-$selected_message = null;
-if (isset($_GET['view'])) {
-    $view_id = intval($_GET['view']);
-    $stmt = $conn->prepare("SELECT id, name, email, message, created_at FROM messages WHERE id = ?");
-    $stmt->bind_param("i", $view_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($result->num_rows > 0) {
-        $selected_message = $result->fetch_assoc();
-    }
-    $stmt->close();
 }
 
 $conn->close();
@@ -52,13 +75,13 @@ $conn->close();
     <link rel="icon" href="img/favicon.png" type="image/png">
     <style>
         body { font-family: 'Outfit', sans-serif; }
-        .sidebar-mobile { transition: left 0.2s; }
-        .sidebar-mobile.closed { left: -100%; }
-        .sidebar-mobile.open { left: 0; }
+        .message-active {
+            background-color: #f3e8ff; /* Light purple for active item */
+            border-right: 4px solid #7A1CAC; /* Darker purple indicator */
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col md:flex-row">
-    <!-- Mobile Header/Navbar -->
     <header class="flex items-center justify-between bg-white border-b px-4 py-3 md:hidden">
         <div class="flex items-center gap-2">
             <img src="img/cr8-logo.png" alt="Logo" class="w-8 h-8 rounded-full">
@@ -70,14 +93,13 @@ $conn->close();
             </svg>
         </button>
     </header>
-    <!-- Sidebar -->
-    <aside class="w-64 bg-white border-r flex-shrink-0 hidden md:flex flex-col justify-between">
+
+    <aside class="sticky top-0 h-screen z-40 w-64 bg-white border-r flex-shrink-0 hidden md:flex flex-col justify-between">
         <div>
             <div class="flex items-center gap-2 px-6 py-6 border-b">
                 <img src="../img/cr8-logo.png" alt="Logo" class="w-10 h-10 rounded-full">
                 <span class="font-bold text-xl text-purple-800">CR8 Cebu</span>
             </div>
-            <!-- *** FIX APPLIED: Restored the "Orders" link and corrected all conditional classes *** -->
             <nav class="flex flex-col gap-1 mt-6 px-2">
     <a href="dashboard.php" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold <?= ($current_page == 'dashboard') ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50 text-gray-700' ?>">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z"></path><path d="M16 10l-4 4-4-4"></path></svg>
@@ -107,6 +129,10 @@ $conn->close();
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
         Sales
     </a>
+    <a href="reports.php" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold <?= ($current_page == 'reports') ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50 text-gray-700' ?>">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Reports
+                </a>
     <a href="inventory.php" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold <?= ($current_page == 'inventory') ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50 text-gray-700' ?>">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4M4 7l8 4.5M12 11.5V21M20 7l-8 4.5"></path></svg>
         Inventory
@@ -126,15 +152,14 @@ $conn->close();
             </a>
         </div>
     </aside>
-    <!-- Overlay for mobile sidebar -->
+    
     <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-30 z-30 hidden md:hidden"></div>
-    <!-- Main Content -->
+
     <main class="flex-1 flex flex-col min-h-screen pt-16 md:pt-0">
         <header class="flex items-center justify-between px-8 py-4 border-b bg-white">
             <h1 class="font-bold text-2xl text-gray-800">Inbox</h1>
         </header>
         <section class="flex-1 flex bg-white">
-            <!-- Left: Message List -->
             <div class="w-96 border-r flex flex-col">
                 <div class="p-4 border-b">
                     <h2 class="font-bold text-lg">Customer Messages <span class="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full"><?= count($messages) ?></span></h2>
@@ -146,16 +171,21 @@ $conn->close();
                         <?php foreach ($messages as $msg): ?>
                         <a href="inbox.php?view=<?= $msg['id'] ?>" class="block border-b px-4 py-3 hover:bg-purple-50 cursor-pointer <?= (isset($_GET['view']) && $_GET['view'] == $msg['id']) ? 'message-active' : '' ?>">
                             <div class="flex justify-between items-center">
-                                <span class="font-bold text-sm"><?= htmlspecialchars($msg['name']) ?></span>
+                                <div class="flex items-center gap-2">
+                                    <?php if ($msg['status'] == 'Unread'): ?>
+                                        <span class="w-2.5 h-2.5 bg-blue-500 rounded-full" title="Unread"></span>
+                                    <?php endif; ?>
+                                    <span class="font-bold text-sm"><?= htmlspecialchars($msg['name']) ?></span>
+                                </div>
                                 <span class="text-xs text-gray-400"><?= date('M d, Y', strtotime($msg['created_at'])) ?></span>
                             </div>
-                            <p class="text-xs text-gray-500 truncate"><?= htmlspecialchars($msg['message']) ?></p>
+                            <p class="text-xs text-gray-500 truncate pl-5"><?= htmlspecialchars($msg['message']) ?></p>
                         </a>
                         <?php endforeach; ?>
                     <?php endif; ?>
                 </div>
             </div>
-            <!-- Right: Message Details -->
+
             <div class="flex-1 flex flex-col p-8 bg-gray-50 overflow-y-auto">
                  <?php if ($selected_message): ?>
                     <div class="bg-white shadow-xl rounded-xl p-8 w-full max-w-3xl mx-auto">
@@ -172,8 +202,9 @@ $conn->close();
                                 <?= nl2br(htmlspecialchars($selected_message['message'])) ?>
                             </div>
                         </div>
-                         <div class="mt-6 text-right">
+                        <div class="mt-6 flex justify-between">
                             <a href="mailto:<?= htmlspecialchars($selected_message['email']) ?>" class="bg-purple-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-purple-700">Reply via Email</a>
+                            <a href="inbox.php?delete=<?= $selected_message['id'] ?>" class="bg-red-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-red-700" onclick="return confirm('Are you sure you want to delete this message?')">Delete</a>
                         </div>
                     </div>
                 <?php else: ?>
@@ -185,22 +216,23 @@ $conn->close();
             </div>
         </section>
     </main>
-    <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-30 z-30 hidden md:hidden"></div>
+    
     <script>
-        // Sidebar toggle for mobile
-        const sidebar = document.getElementById('sidebar');
+        // Basic sidebar toggle for mobile view.
         const sidebarToggle = document.getElementById('sidebarToggle');
         const sidebarOverlay = document.getElementById('sidebarOverlay');
-        if(sidebar && sidebarToggle && sidebarOverlay){
+        // This is a simplified version, assuming a single sidebar element will be created or is already present.
+        const sidebar = document.querySelector('aside'); 
+
+        if (sidebarToggle && sidebar && sidebarOverlay) {
             sidebarToggle.addEventListener('click', () => {
-                sidebar.classList.toggle('translate-x-full');
+                // This is a generic toggle and may need adjustment based on your full sidebar implementation
+                sidebar.classList.toggle('hidden'); 
                 sidebarOverlay.classList.toggle('hidden');
-                document.body.classList.toggle('overflow-hidden', !sidebarOverlay.classList.contains('hidden'));
             });
             sidebarOverlay.addEventListener('click', () => {
-                sidebar.classList.add('translate-x-full');
+                sidebar.classList.add('hidden');
                 sidebarOverlay.classList.add('hidden');
-                document.body.classList.remove('overflow-hidden');
             });
         }
     </script>

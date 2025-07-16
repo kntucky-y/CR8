@@ -16,16 +16,19 @@ $filter_artist_id = $_GET['artist_id'] ?? 'all';
 $sort_order = $_GET['sort'] ?? 'revenue_desc';
 
 // --- Get data for the Artist card ---
-$artist_card_label = "Top Artist";
+$artist_card_label = "Top Artist (Completed Sales)";
 if ($filter_artist_id !== 'all') {
-    // If a specific artist is filtered, get their total sales
-    $artist_card_label = "Artist Sales";
+    // If a specific artist is filtered, get their total completed sales
+    $artist_card_label = "Artist Sales (Completed)";
+    // MODIFIED: This query now only counts sales from orders with a 'Completed' status.
     $artist_card_sql = "
         SELECT a.artist_name, SUM(oi.price * oi.quantity) as total_revenue
-        FROM artists a
-        LEFT JOIN products p ON a.id = p.artist_id
-        LEFT JOIN order_items oi ON p.id = oi.product_id
-        WHERE a.id = ?
+        FROM order_items oi
+        JOIN orders o ON oi.order_id = o.id
+        JOIN products p ON oi.product_id = p.id
+        JOIN artists a ON p.artist_id = a.id
+        WHERE a.id = ? 
+          AND (SELECT status FROM delivery d WHERE d.order_id = o.id ORDER BY d.id DESC LIMIT 1) = 'Completed'
         GROUP BY a.id";
     $artist_card_stmt = $conn->prepare($artist_card_sql);
     $artist_card_stmt->bind_param("i", $filter_artist_id);
@@ -34,12 +37,15 @@ if ($filter_artist_id !== 'all') {
     $artist_card_data = $artist_card_result ? $artist_card_result->fetch_assoc() : null;
     $artist_card_stmt->close();
 } else {
-    // If showing all, get the top artist overall
+    // If showing all, get the top artist overall from completed sales
+    // MODIFIED: This query now only counts sales from orders with a 'Completed' status.
     $artist_card_sql = "
         SELECT a.artist_name, SUM(oi.price * oi.quantity) as total_revenue
         FROM order_items oi
+        JOIN orders o ON oi.order_id = o.id
         JOIN products p ON oi.product_id = p.id
         JOIN artists a ON p.artist_id = a.id
+        WHERE (SELECT status FROM delivery d WHERE d.order_id = o.id ORDER BY d.id DESC LIMIT 1) = 'Completed'
         GROUP BY a.id
         ORDER BY total_revenue DESC
         LIMIT 1";
@@ -53,6 +59,7 @@ $all_artists_result = $conn->query("SELECT id, artist_name FROM artists ORDER BY
 
 
 // --- Build the main query for the product list ---
+// MODIFIED: This query now only sums items from orders with a 'Completed' status.
 $products_sql = "
     SELECT 
         p.product_name,
@@ -63,12 +70,13 @@ $products_sql = "
         SUM(oi.quantity) as total_sold,
         SUM(oi.price * oi.quantity) as total_revenue
     FROM order_items oi
+    JOIN orders o ON oi.order_id = o.id
     JOIN products p ON oi.product_id = p.id
     LEFT JOIN variants v ON oi.variant_id = v.id
     LEFT JOIN artists a ON p.artist_id = a.id
 ";
 
-$where_clauses = [];
+$where_clauses = ["(SELECT status FROM delivery d WHERE d.order_id = o.id ORDER BY d.id DESC LIMIT 1) = 'Completed'"];
 $params = [];
 $types = '';
 
@@ -117,60 +125,8 @@ $conn->close();
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex">
-<aside class="sticky top-0 h-screen z-40 w-64 bg-white border-r flex-shrink-0 hidden md:flex flex-col justify-between">
-        <div>
-            <div class="flex items-center gap-2 px-6 py-6 border-b">
-                <img src="../img/cr8-logo.png" alt="Logo" class="w-10 h-10 rounded-full">
-                <span class="font-bold text-xl text-purple-800">CR8 Cebu</span>
-            </div>
-            <!-- *** FIX APPLIED: Restored the "Orders" link and corrected all conditional classes *** -->
-            <nav class="flex flex-col gap-1 mt-6 px-2">
-    <a href="dashboard.php" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold <?= ($current_page == 'dashboard') ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50 text-gray-700' ?>">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z"></path><path d="M16 10l-4 4-4-4"></path></svg>
-        Dashboard
-    </a>
-    <a href="artist_applications.php" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold <?= ($current_page == 'artist_applications') ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50 text-gray-700' ?>">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-        Artist Applications
-    </a>
-    <a href="inbox.php" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold <?= ($current_page == 'inbox') ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50 text-gray-700' ?>">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 10h.01M12 10h.01M16 10h.01M9 16h6m2 4H7a2 2 0 01-2-2V7a2 2 0 012-2h3.28a2 2 0 011.42.59l.3.3a2 2 0 001.42.59H17a2 2 0 012 2v11a2 2 0 01-2 2z"></path></svg>
-        Inbox
-    </a>
-    <a href="artists.php" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold <?= ($current_page == 'artists') ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50 text-gray-700' ?>">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-        All Artists
-    </a>
-    <a href="customers.php" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold <?= ($current_page == 'customers') ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50 text-gray-700' ?>">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21v-3a3 3 0 00-3-3H6a3 3 0 00-3 3v3"></path></svg>
-        All Customers
-    </a>
-    <a href="orders.php" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold <?= ($current_page == 'orders') ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50 text-gray-700' ?>">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18"/></svg>
-        Orders
-    </a>
-    <a href="sales.php" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold <?= ($current_page == 'sales') ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50 text-gray-700' ?>">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
-        Sales
-    </a>
-    <a href="inventory.php" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold <?= ($current_page == 'inventory') ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50 text-gray-700' ?>">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4M4 7l8 4.5M12 11.5V21M20 7l-8 4.5"></path></svg>
-        Inventory
-    </a>
-    <?php if (isset($_SESSION['is_superadmin']) && $_SESSION['is_superadmin'] == 1): ?>
-    <a href="admin_management.php" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold <?= ($current_page == 'admin_management') ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50 text-gray-700' ?>">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-        Admin Management
-    </a>
-    <?php endif; ?>
-</nav>
-        </div>
-        <div class="mb-6 px-2">
-            <a href="dashboard.php?logout=1" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold bg-red-50 text-red-700 hover:bg-red-100">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1"></path></svg>
-                Logout
-            </a>
-        </div>
+    <aside class="sticky top-0 h-screen z-40 w-64 bg-white border-r flex-shrink-0 hidden md:flex flex-col justify-between">
+        <?php include '_sidebar.php'; // Using the reusable sidebar ?>
     </aside>
 
     <main class="flex-1 flex flex-col min-h-screen">
@@ -184,7 +140,11 @@ $conn->close();
                     <label for="artist_id" class="font-semibold text-gray-600">Artist:</label>
                     <select name="artist_id" id="artist_id" class="border-gray-300 rounded-md shadow-sm">
                         <option value="all">All Artists</option>
-                        <?php while($artist = $all_artists_result->fetch_assoc()): ?>
+                        <?php 
+                        // Reset pointer and loop through artists for the dropdown
+                        $all_artists_result->data_seek(0); 
+                        while($artist = $all_artists_result->fetch_assoc()): 
+                        ?>
                             <option value="<?= $artist['id'] ?>" <?= ($filter_artist_id == $artist['id']) ? 'selected' : '' ?>>
                                 <?= htmlspecialchars($artist['artist_name']) ?>
                             </option>
@@ -211,9 +171,8 @@ $conn->close();
                         <h2 class="text-lg font-semibold text-gray-500 mb-1"><?= $artist_card_label ?></h2>
                         <div class="flex items-center gap-3">
                             <span class="text-2xl font-bold text-purple-700 truncate" title="<?= htmlspecialchars($artist_card_data['artist_name'] ?? 'N/A') ?>"><?= htmlspecialchars($artist_card_data['artist_name'] ?? 'N/A') ?></span>
-                            <!-- *** FIX: Increased font size from text-sm to text-lg *** -->
                             <span class="bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-semibold text-lg shadow">
-                                ₱<?= number_format($artist_card_data['total_revenue'] ?? 0, 2) ?> in sales
+                                ₱<?= number_format($artist_card_data['total_revenue'] ?? 0, 2) ?>
                             </span>
                         </div>
                     </div>

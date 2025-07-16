@@ -18,14 +18,14 @@ $sql = "";
 
 switch ($filter) {
     case 'has_orders':
-        $sql = "SELECT u.id, u.first_name, u.last_name, u.email, u.created_at FROM users u WHERE u.role = 'customer' AND EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = u.id) ORDER BY u.created_at DESC";
+        $sql = "SELECT u.id, u.first_name, u.last_name, u.email, u.created_at, u.role FROM users u WHERE u.role IN ('customer', 'artist') AND EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = u.id) ORDER BY u.created_at DESC";
         break;
     case 'no_orders':
-        $sql = "SELECT u.id, u.first_name, u.last_name, u.email, u.created_at FROM users u WHERE u.role = 'customer' AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = u.id) ORDER BY u.created_at DESC";
+        $sql = "SELECT u.id, u.first_name, u.last_name, u.email, u.created_at, u.role FROM users u WHERE u.role IN ('customer', 'artist') AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = u.id) ORDER BY u.created_at DESC";
         break;
     case 'all':
     default:
-        $sql = "SELECT id, first_name, last_name, email, created_at FROM users WHERE role = 'customer' ORDER BY created_at DESC";
+        $sql = "SELECT id, first_name, last_name, email, created_at, role FROM users WHERE role IN ('customer', 'artist') ORDER BY created_at DESC";
         break;
 }
 
@@ -55,7 +55,6 @@ $conn->close();
                 <img src="../img/cr8-logo.png" alt="Logo" class="w-10 h-10 rounded-full">
                 <span class="font-bold text-xl text-purple-800">CR8 Cebu</span>
             </div>
-            <!-- *** FIX APPLIED: Restored the "Orders" link and corrected all conditional classes *** -->
             <nav class="flex flex-col gap-1 mt-6 px-2">
     <a href="dashboard.php" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold <?= ($current_page == 'dashboard') ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50 text-gray-700' ?>">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z"></path><path d="M16 10l-4 4-4-4"></path></svg>
@@ -85,6 +84,10 @@ $conn->close();
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
         Sales
     </a>
+    <a href="reports.php" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold <?= ($current_page == 'reports') ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50 text-gray-700' ?>">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Reports
+                </a>
     <a href="inventory.php" class="flex items-center gap-3 px-4 py-3 rounded-lg font-semibold <?= ($current_page == 'inventory') ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50 text-gray-700' ?>">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4M4 7l8 4.5M12 11.5V21M20 7l-8 4.5"></path></svg>
         Inventory
@@ -123,6 +126,7 @@ $conn->close();
                         <thead class="bg-gray-50">
                             <tr>
                                 <th class="p-4 font-semibold text-gray-600">Customer Name</th>
+                                <th class="p-4 font-semibold text-gray-600">Role</th>
                                 <th class="p-4 font-semibold text-gray-600">Email Address</th>
                                 <th class="p-4 font-semibold text-gray-600">Date Joined</th>
                                 <th class="p-4 font-semibold text-gray-600 text-center">Actions</th>
@@ -133,6 +137,13 @@ $conn->close();
                                 <?php while($customer = $customers_result->fetch_assoc()): ?>
                                     <tr class="hover:bg-gray-50">
                                         <td class="p-4 font-medium text-gray-800"><?= htmlspecialchars(trim($customer['first_name'] . ' ' . $customer['last_name'])) ?: 'N/A' ?></td>
+                                        <td class="p-4">
+                                            <?php
+                                                $role = htmlspecialchars($customer['role']);
+                                                $role_class = $role == 'artist' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700';
+                                                echo "<span class='px-2 py-1 text-xs font-semibold rounded-full $role_class'>" . ucfirst($role) . "</span>";
+                                            ?>
+                                        </td>
                                         <td class="p-4 text-gray-600"><?= htmlspecialchars($customer['email']) ?></td>
                                         <td class="p-4 text-gray-600"><?= date('F j, Y', strtotime($customer['created_at'])) ?></td>
                                         <td class="p-4 text-center">
@@ -142,7 +153,7 @@ $conn->close();
                                 <?php endwhile; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="4" class="text-center p-8 text-gray-500">No customers found for this filter.</td>
+                                    <td colspan="5" class="text-center p-8 text-gray-500">No customers found for this filter.</td>
                                 </tr>
                             <?php endif; ?>
                         </tbody>
