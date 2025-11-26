@@ -1,8 +1,16 @@
+import { Routes, Route, Navigate } from "react-router-dom";
+import Layout from "./components/Layout.jsx";
+import Dashboard from "./pages/Dashboard.jsx";
+
 function App() {
   return (
-    <div className="p-10 text-4xl text-blue-600 font-bold">
-      Tailwind works!
-    </div>
+    <Layout>
+      <Routes>
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        {/* later: <Route path="/orders" element={<Orders />} /> etc. */}
+      </Routes>
+    </Layout>
   );
 }
 
