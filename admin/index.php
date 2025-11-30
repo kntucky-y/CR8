@@ -1,4 +1,3 @@
-
 <?php
 session_start();
 
@@ -75,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </svg>
             </div>
             <h1 class="text-2xl font-bold text-gray-900 mb-2 text-center">Admin Login</h1>
-            <p class="text-gray-500 text-center mb-6">Access the artist application management system</p>
+            <p class="text-gray-500 text-center mb-6">Access the CR8 Shop Admin panel</p>
             <?php if ($error): ?>
                 <div class="bg-red-100 text-red-700 px-4 py-2 rounded mb-4 w-full text-center"><?= htmlspecialchars($error) ?></div>
             <?php endif; ?>
