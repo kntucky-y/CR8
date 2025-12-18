@@ -1,0 +1,16 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  
+  # Don't rewrite API requests
+  RewriteCond %{REQUEST_URI} ^/api/ [OR]
+  RewriteCond %{REQUEST_URI} ^/cr8images/
+  RewriteRule ^ - [L]
+  
+  # Don't rewrite files or directories
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  
+  # Rewrite everything else to index.html
+  RewriteRule . /index.html [L]
+</IfModule>

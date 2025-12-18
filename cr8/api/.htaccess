@@ -1,0 +1,10 @@
+RewriteEngine On
+RewriteBase /api/
+
+# Allow direct .php file access with query parameters to pass through
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Remove .php extension - rewrite /api/auth to /api/auth.php
+RewriteCond %{REQUEST_FILENAME}.php -f
+RewriteRule ^(.+)$ $1.php [L,QSA]
