@@ -227,10 +227,10 @@ switch ($action) {
         try {
             $mail->SMTPDebug = 0; // Set to 2 for debugging
             $mail->isSMTP();
-            $mail->Host       = 'smtp.gmail.com';
+            $mail->Host       = '';
             $mail->SMTPAuth   = true;
-            $mail->Username   = 'ladykgutz@gmail.com';
-            $mail->Password   = 'rsqgzgbfvbmvwchd';
+            $mail->Username   = '';
+            $mail->Password   = '';
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port       = 587;
             $mail->SMTPOptions = array(
