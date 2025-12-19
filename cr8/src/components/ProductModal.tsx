@@ -47,15 +47,17 @@ const ProductModal = ({ product, isOpen, onClose }: ProductModalProps) => {
 
   const handleAddToCart = async () => {
     if (!user) {
-      localStorage.setItem('redirectAfterLogin', JSON.stringify({ action: 'addToCart', productId: product.id, quantity }))
+      localStorage.setItem('redirectAfterLogin', JSON.stringify({ action: 'addToCart', productId: product.id, quantity, variantId: selectedVariant?.id }))
       setShowLoginPrompt(true)
       return
     }
     try {
-      await addToCart(product.id, quantity)
+      const variantId = selectedVariant?.id && typeof selectedVariant.id === 'number' ? selectedVariant.id : undefined
+      await addToCart(product.id, quantity, variantId)
       onClose()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to add to cart:', error)
+      alert(error.message || 'Failed to add to cart')
     }
   }
 

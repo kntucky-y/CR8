@@ -50,14 +50,21 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
-  const addToCart = async (productId: number, quantity: number) => {
+  const addToCart = async (productId: number, quantity: number, variantId?: number) => {
     try {
-      const response = await api.post('/cart?action=add', { product_id: productId, quantity })
+      const payload: any = { product_id: productId, quantity }
+      if (variantId) {
+        payload.variant_id = variantId
+      }
+      const response = await api.post('/cart?action=add', payload)
       if (response.data.success) {
         await loadCart()
+      } else {
+        throw new Error(response.data.message || 'Failed to add to cart')
       }
-    } catch (error) {
-      throw error
+    } catch (error: any) {
+      const message = error.response?.data?.message || error.message || 'Failed to add to cart'
+      throw new Error(message)
     }
   }
 
@@ -66,9 +73,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       const response = await api.post('/cart?action=update', { product_id: productId, quantity })
       if (response.data.success) {
         await loadCart()
+      } else {
+        throw new Error(response.data.message || 'Failed to update cart')
       }
-    } catch (error) {
-      throw error
+    } catch (error: any) {
+      const message = error.response?.data?.message || error.message || 'Failed to update cart'
+      throw new Error(message)
     }
   }
 

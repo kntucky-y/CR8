@@ -38,6 +38,9 @@ interface Order {
   item_count: number
   status: string
   tracking_number: string | null
+  cancel_reason?: string | null
+  refund_status?: 'Pending' | 'Refunded' | 'Not Required' | null
+  refund_proof?: string | null
   customer_name?: string
   items?: Array<{
     product_id: number
@@ -81,6 +84,12 @@ const UserDashboard = () => {
   const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set())
   const [showReceipt, setShowReceipt] = useState(false)
   const [receiptData, setReceiptData] = useState<any>(null)
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [cancelOrderId, setCancelOrderId] = useState<number | null>(null)
+  const [cancelReason, setCancelReason] = useState('')
+  const [cancellingOrder, setCancellingOrder] = useState(false)
+  const [showRefundProofModal, setShowRefundProofModal] = useState(false)
+  const [refundProofUrl, setRefundProofUrl] = useState('')
   const [profileData, setProfileData] = useState({
     first_name: user?.first_name || '',
     last_name: user?.last_name || '',
@@ -101,7 +110,7 @@ const UserDashboard = () => {
   })
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [hasVariants, setHasVariants] = useState(false)
-  const [variants, setVariants] = useState<Array<{name: string; quantity: string; price: string; image: File | null}>>([{name: '', quantity: '', price: '', image: null}])
+  const [variants, setVariants] = useState<Array<{name: string; quantity: string; price: string; image: File | null; existingImage?: string | null; variantId?: number}>>([{name: '', quantity: '', price: '', image: null}])
   const [submittingProduct, setSubmittingProduct] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [productSearch, setProductSearch] = useState('')
@@ -240,6 +249,36 @@ const UserDashboard = () => {
     setShowReceipt(true)
   }
 
+  const handleCancelOrder = async () => {
+    if (!cancelOrderId || !cancelReason.trim()) {
+      alert('Please provide a cancellation reason')
+      return
+    }
+
+    setCancellingOrder(true)
+    try {
+      const response = await api.post('/orders.php?action=cancel', {
+        order_id: cancelOrderId,
+        reason: cancelReason
+      })
+
+      if (response.data.success) {
+        alert('Order cancelled successfully')
+        setShowCancelModal(false)
+        setCancelOrderId(null)
+        setCancelReason('')
+        loadOrders() // Reload orders
+      } else {
+        alert(response.data.message || 'Failed to cancel order')
+      }
+    } catch (error) {
+      console.error('Error cancelling order:', error)
+      alert('Failed to cancel order')
+    } finally {
+      setCancellingOrder(false)
+    }
+  }
+
   const handleProfileInputChange = (field: string, value: string) => {
     // Phone validation - only allow numbers and limit to 11 digits
     if (field === 'phone') {
@@ -347,6 +386,37 @@ const UserDashboard = () => {
     e.preventDefault()
     setSubmittingProduct(true)
 
+    // Validate quantity
+    const quantity = parseInt(productFormData.quantity)
+    if (isNaN(quantity) || quantity < 0) {
+      alert('Quantity must be a valid number and cannot be negative')
+      setSubmittingProduct(false)
+      return
+    }
+    if (!editingProduct && quantity === 0) {
+      alert('Quantity must be greater than 0 when adding a new product')
+      setSubmittingProduct(false)
+      return
+    }
+
+    // Validate variant quantities if has variants
+    if (hasVariants) {
+      const validVariants = variants.filter(v => v.name.trim() !== '')
+      for (let i = 0; i < validVariants.length; i++) {
+        const variantQty = parseInt(validVariants[i].quantity)
+        if (isNaN(variantQty) || variantQty < 0) {
+          alert(`Variant ${i + 1} quantity must be a valid number and cannot be negative`)
+          setSubmittingProduct(false)
+          return
+        }
+        if (!editingProduct && variantQty === 0) {
+          alert(`Variant ${i + 1} quantity must be greater than 0 when adding a new product`)
+          setSubmittingProduct(false)
+          return
+        }
+      }
+    }
+
     const formDataObj = new FormData()
     formDataObj.append('product_name', productFormData.product_name)
     formDataObj.append('description', productFormData.description)
@@ -367,7 +437,9 @@ const UserDashboard = () => {
       formDataObj.append('variants', JSON.stringify(validVariants.map(v => ({
         name: v.name,
         quantity: v.quantity,
-        price: v.price
+        price: v.price,
+        variantId: v.variantId,
+        existingImage: v.existingImage
       }))))
       
       validVariants.forEach((variant, index) => {
@@ -471,7 +543,9 @@ const UserDashboard = () => {
         name: v.variant_name,
         quantity: v.quantity.toString(),
         price: v.price.toString(),
-        image: null
+        image: null,
+        existingImage: v.image,
+        variantId: v.id
       })))
     } else {
       setHasVariants(false)
@@ -482,10 +556,25 @@ const UserDashboard = () => {
   }
 
   return (
-    <div className="bg-bg-color h-screen flex flex-col overflow-hidden">
-      <div className="px-4 md:px-10 lg:px-20 mx-auto w-full flex-shrink-0">
-        <Navbar showSearch={true} hideWishlist={true} />
+    <div className="bg-bg-color h-screen flex flex-col overflow-hidden relative">
+      {/* Background decorations */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <img
+          src="/img/blubber.png"
+          alt="Decoration"
+          className="absolute top-10 left-0 w-1/6 opacity-40 animate-float hidden lg:block"
+        />
+        <img
+          src="/img/bubber.png"
+          alt="Decoration"
+          className="absolute top-[400px] right-0 w-1/6 opacity-30 animate-float hidden lg:block"
+        />
       </div>
+
+      <div className="relative z-10 h-full flex flex-col overflow-hidden">
+        <div className="px-4 md:px-10 lg:px-20 mx-auto w-full flex-shrink-0">
+          <Navbar showSearch={false} hideWishlist={true} />
+        </div>
 
       <main className="px-4 md:px-10 lg:px-20 mx-auto flex-1 overflow-hidden w-full flex flex-col">
         <div className="max-w-6xl mx-auto flex-1 flex flex-col overflow-hidden w-full">
@@ -817,6 +906,39 @@ const UserDashboard = () => {
                                     </div>
                                   )}
 
+                                  {order.status === 'Cancelled' && order.cancel_reason && (
+                                    <div className="border-t pt-4 mt-4">
+                                      <p className="text-sm text-gray-700 mb-1"><strong>Cancellation Reason:</strong></p>
+                                      <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded mb-3">{order.cancel_reason}</p>
+                                      
+                                      <div className="mt-3">
+                                        <p className="text-sm text-gray-700 mb-1"><strong>Refund Status:</strong></p>
+                                        <div className="flex items-center gap-3">
+                                          <p className={`text-sm px-3 py-2 rounded inline-block ${
+                                            order.refund_status === 'Refunded' 
+                                              ? 'text-green-700 bg-green-50' 
+                                              : order.refund_status === 'Pending'
+                                              ? 'text-yellow-700 bg-yellow-50'
+                                              : 'text-gray-600 bg-gray-50'
+                                          }`}>
+                                            {order.refund_status || 'Not Required'}
+                                          </p>
+                                          {order.refund_status === 'Refunded' && order.refund_proof && (
+                                            <button
+                                              onClick={() => {
+                                                setRefundProofUrl(`https://cr8admin.dcism.org/${order.refund_proof}`)
+                                                setShowRefundProofModal(true)
+                                              }}
+                                              className="text-sm px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-semibold"
+                                            >
+                                              View Refund Proof
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+
                                   {order.status === 'Out for Delivery' && (
                                     !order.proof_delivery ? (
                                       <div className="border-t pt-4 mt-4">
@@ -851,14 +973,25 @@ const UserDashboard = () => {
                                     )
                                   )}
 
-                                  {/* View Receipt Button */}
-                                  <div className="border-t pt-4 mt-4">
+                                  {/* Action Buttons */}
+                                  <div className="border-t pt-4 mt-4 space-y-2">
                                     <button
                                       onClick={() => handleViewReceipt(order)}
                                       className="w-full px-4 py-2 bg-purple text-white rounded-lg font-semibold hover:bg-dark-purple transition"
                                     >
                                       View Receipt
                                     </button>
+                                    {order.status === 'For Review' && (
+                                      <button
+                                        onClick={() => {
+                                          setCancelOrderId(order.id)
+                                          setShowCancelModal(true)
+                                        }}
+                                        className="w-full px-4 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition"
+                                      >
+                                        Cancel Order
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
                               ))}
@@ -1118,10 +1251,12 @@ const UserDashboard = () => {
                   <input
                     type="number"
                     required
+                    min={editingProduct ? "0" : "1"}
                     value={productFormData.quantity}
                     onChange={(e) => setProductFormData({...productFormData, quantity: e.target.value})}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple focus:border-transparent font-outfit"
                   />
+                  <p className="text-xs text-gray-500 mt-1 font-outfit">{editingProduct ? 'Set to 0 for out of stock' : 'Must be at least 1'}</p>
                 </div>
               </div>
               <div>
@@ -1195,6 +1330,7 @@ const UserDashboard = () => {
                           <label className="block text-xs text-gray-600 mb-1 font-outfit">Quantity</label>
                           <input
                             type="number"
+                            min={editingProduct ? "0" : "1"}
                             value={variant.quantity}
                             onChange={(e) => updateVariantField(index, 'quantity', e.target.value)}
                             placeholder="Stock"
@@ -1204,10 +1340,16 @@ const UserDashboard = () => {
                       </div>
                       <div>
                         <label className="block text-xs text-gray-600 mb-1 font-outfit">Image</label>
-                        {editingProduct && editingProduct.variants && editingProduct.variants[index]?.image && (
-                          <div className="mb-1">
-                            <img src={`https://cr8.dcism.org/${editingProduct.variants[index].image}`} alt="Current variant" className="h-16 w-16 object-cover rounded" />
-                            <p className="text-xs text-gray-500 font-outfit">Current image</p>
+                        {variant.existingImage && !variant.image && (
+                          <div className="mb-2 flex items-center gap-2">
+                            <img src={`https://cr8.dcism.org/${variant.existingImage}`} alt="Current variant" className="h-16 w-16 object-cover rounded border border-gray-300" />
+                            <span className="text-xs text-gray-600 font-outfit">Current image</span>
+                          </div>
+                        )}
+                        {variant.image && (
+                          <div className="mb-2 flex items-center gap-2">
+                            <img src={URL.createObjectURL(variant.image)} alt="New variant" className="h-16 w-16 object-cover rounded border border-green-300" />
+                            <span className="text-xs text-green-600 font-outfit">New image (will replace current)</span>
                           </div>
                         )}
                         <input
@@ -1216,7 +1358,7 @@ const UserDashboard = () => {
                           onChange={(e) => updateVariantImage(index, e.target.files?.[0] || null)}
                           className="w-full border border-gray-300 rounded-lg px-3 py-1 text-sm font-outfit"
                         />
-                        {editingProduct && <p className="text-xs text-gray-500 font-outfit">Leave empty to keep current image</p>}
+                        {editingProduct && variant.existingImage && <p className="text-xs text-gray-500 font-outfit mt-1">Leave empty to keep current image</p>}
                       </div>
                     </div>
                   ))}
@@ -1261,6 +1403,71 @@ const UserDashboard = () => {
           onClose={() => setShowReceipt(false)}
           orderData={receiptData}
         />
+      )}
+
+      {/* Cancel Order Modal */}
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-red-600 mb-4 font-lilita">
+              Cancel Order
+            </h2>
+            
+            <p className="text-gray-700 mb-4 font-outfit">
+              Are you sure you want to cancel this order? Please provide a reason for cancellation.
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-sm font-semibold mb-2 font-outfit">Cancellation Reason</label>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="e.g., Changed my mind, Found a better deal, etc."
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple focus:border-transparent font-outfit"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowCancelModal(false)
+                  setCancelOrderId(null)
+                  setCancelReason('')
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-outfit font-semibold"
+              >
+                Keep Order
+              </button>
+              <button
+                onClick={handleCancelOrder}
+                disabled={cancellingOrder || !cancelReason.trim()}
+                className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 font-outfit font-semibold"
+              >
+                {cancellingOrder ? 'Cancelling...' : 'Cancel Order'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Refund Proof Modal */}
+      {showRefundProofModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" onClick={() => setShowRefundProofModal(false)}>
+          <div className="relative max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setShowRefundProofModal(false)}
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 text-2xl font-bold"
+            >
+              ✕
+            </button>
+            <img
+              src={refundProofUrl}
+              alt="Refund Proof"
+              className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
+            />
+          </div>
+        </div>
       )}
 
       {/* Review Modal */}
@@ -1324,6 +1531,7 @@ const UserDashboard = () => {
         </div>
       )}
       </main>
+      </div>
     </div>
   )
 }

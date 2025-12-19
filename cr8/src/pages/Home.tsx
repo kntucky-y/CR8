@@ -1,10 +1,12 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Navbar from '../components/Navbar'
 
 const Home = () => {
   const { user } = useAuth()
+  const [showTerms, setShowTerms] = useState(false)
+  const [showPrivacy, setShowPrivacy] = useState(false)
 
   useEffect(() => {
     const observerOptions = {
@@ -236,17 +238,236 @@ const Home = () => {
             <div className="border-t border-bg-color border-opacity-30 pt-6 text-center">
               <p className="font-outfit text-bg-color text-xs mb-2">© 2025 CR8. All Rights Reserved.</p>
               <div className="flex flex-wrap justify-center gap-4 text-xs">
-                <a href="#" className="font-outfit text-bg-color hover:text-pink-ish transition-colors cursor-pointer">
+                <button 
+                  onClick={() => setShowTerms(true)}
+                  className="font-outfit text-bg-color hover:text-pink-ish transition-colors cursor-pointer"
+                >
                   Terms of Service
-                </a>
-                <a href="#" className="font-outfit text-bg-color hover:text-pink-ish transition-colors cursor-pointer">
+                </button>
+                <button 
+                  onClick={() => setShowPrivacy(true)}
+                  className="font-outfit text-bg-color hover:text-pink-ish transition-colors cursor-pointer"
+                >
                   Privacy Policy
-                </a>
+                </button>
               </div>
             </div>
           </div>
         </footer>
       </div>
+
+      {/* Terms of Service Modal */}
+      {showTerms && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-3xl w-full max-h-[80vh] overflow-y-auto p-6 md:p-8">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-dark-purple font-lilita">Terms of Service</h2>
+              <button 
+                onClick={() => setShowTerms(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
+              >
+                ×
+              </button>
+            </div>
+            <div className="space-y-4 text-gray-700 font-outfit">
+              <p className="text-sm text-gray-500">Last Updated: December 19, 2025</p>
+              
+              <section>
+                <h3 className="font-semibold text-lg text-dark-purple mb-2">1. Acceptance of Terms</h3>
+                <p>By accessing and using CR8, you accept and agree to be bound by the terms and provisions of this agreement. If you do not agree to these terms, please do not use our services.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-lg text-dark-purple mb-2">2. User Accounts</h3>
+                <p>When you create an account with us, you must provide accurate, complete, and current information. Failure to do so constitutes a breach of the Terms, which may result in immediate termination of your account.</p>
+                <p className="mt-2">You are responsible for safeguarding your password and for all activities that occur under your account.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-lg text-dark-purple mb-2">3. Artist Responsibilities</h3>
+                <p>Artists who sell products on CR8 agree to:</p>
+                <ul className="list-disc list-inside ml-4 mt-2 space-y-1">
+                  <li>Provide accurate product descriptions and images</li>
+                  <li>Fulfill orders in a timely manner</li>
+                  <li>Maintain product quality standards</li>
+                  <li>Respect intellectual property rights</li>
+                  <li>Not sell prohibited or illegal items</li>
+                </ul>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-lg text-dark-purple mb-2">4. Purchases and Payments</h3>
+                <p>All purchases are subject to product availability. We reserve the right to refuse any order. Prices are subject to change without notice.</p>
+                <p className="mt-2">Payment methods include Cash on Delivery (COD) and GCash. For GCash payments, proof of payment must be uploaded during checkout.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-lg text-dark-purple mb-2">5. Shipping and Delivery</h3>
+                <p>Delivery times are estimates and not guaranteed. CR8 is not responsible for delays caused by courier services or circumstances beyond our control.</p>
+                <p className="mt-2">Customers must upload proof of delivery upon receiving their orders to complete the transaction.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-lg text-dark-purple mb-2">6. Returns and Refunds</h3>
+                <p>Please contact the artist directly for any product issues. Refund policies are determined on a case-by-case basis.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-lg text-dark-purple mb-2">7. Prohibited Activities</h3>
+                <p>You may not:</p>
+                <ul className="list-disc list-inside ml-4 mt-2 space-y-1">
+                  <li>Violate any laws or regulations</li>
+                  <li>Infringe on intellectual property rights</li>
+                  <li>Transmit viruses or malicious code</li>
+                  <li>Impersonate others or misrepresent your affiliation</li>
+                  <li>Engage in fraudulent activities</li>
+                </ul>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-lg text-dark-purple mb-2">8. Limitation of Liability</h3>
+                <p>CR8 shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use or inability to use the service.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-lg text-dark-purple mb-2">9. Changes to Terms</h3>
+                <p>We reserve the right to modify these terms at any time. Changes will be effective immediately upon posting. Your continued use of the service constitutes acceptance of the modified terms.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-lg text-dark-purple mb-2">10. Contact Information</h3>
+                <p>For questions about these Terms, please contact us at:</p>
+                <p className="mt-2">Email: cr8.ceb@gmail.com</p>
+                <p>Instagram: @cr8.ceb</p>
+              </section>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button 
+                onClick={() => setShowTerms(false)}
+                className="px-6 py-2 bg-purple text-white rounded-lg hover:bg-dark-purple transition font-semibold"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Privacy Policy Modal */}
+      {showPrivacy && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-3xl w-full max-h-[80vh] overflow-y-auto p-6 md:p-8">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-dark-purple font-lilita">Privacy Policy</h2>
+              <button 
+                onClick={() => setShowPrivacy(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
+              >
+                ×
+              </button>
+            </div>
+            <div className="space-y-4 text-gray-700 font-outfit">
+              <p className="text-sm text-gray-500">Last Updated: December 19, 2025</p>
+              
+              <section>
+                <h3 className="font-semibold text-lg text-dark-purple mb-2">1. Information We Collect</h3>
+                <p>We collect information that you provide directly to us, including:</p>
+                <ul className="list-disc list-inside ml-4 mt-2 space-y-1">
+                  <li>Personal information (name, email address, phone number)</li>
+                  <li>Delivery address</li>
+                  <li>Payment information</li>
+                  <li>Profile information</li>
+                  <li>Order history and preferences</li>
+                  <li>Product reviews and ratings</li>
+                </ul>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-lg text-dark-purple mb-2">2. How We Use Your Information</h3>
+                <p>We use the information we collect to:</p>
+                <ul className="list-disc list-inside ml-4 mt-2 space-y-1">
+                  <li>Process and fulfill your orders</li>
+                  <li>Communicate with you about your orders</li>
+                  <li>Send you notifications about your account</li>
+                  <li>Improve our services and user experience</li>
+                  <li>Prevent fraud and enhance security</li>
+                  <li>Comply with legal obligations</li>
+                </ul>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-lg text-dark-purple mb-2">3. Information Sharing</h3>
+                <p>We do not sell your personal information. We may share your information with:</p>
+                <ul className="list-disc list-inside ml-4 mt-2 space-y-1">
+                  <li>Artists to fulfill your orders</li>
+                  <li>Courier services for delivery</li>
+                  <li>Service providers who assist in operating our platform</li>
+                  <li>Law enforcement when required by law</li>
+                </ul>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-lg text-dark-purple mb-2">4. Cookies and Tracking</h3>
+                <p>We use cookies and similar tracking technologies to maintain your session, remember your preferences, and analyze site usage. You can control cookies through your browser settings.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-lg text-dark-purple mb-2">5. Data Security</h3>
+                <p>We implement appropriate security measures to protect your personal information, including:</p>
+                <ul className="list-disc list-inside ml-4 mt-2 space-y-1">
+                  <li>Password hashing and encryption</li>
+                  <li>Secure session management</li>
+                  <li>Protected database access</li>
+                  <li>Regular security updates</li>
+                </ul>
+                <p className="mt-2">However, no method of transmission over the Internet is 100% secure.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-lg text-dark-purple mb-2">6. Your Rights</h3>
+                <p>You have the right to:</p>
+                <ul className="list-disc list-inside ml-4 mt-2 space-y-1">
+                  <li>Access your personal information</li>
+                  <li>Correct inaccurate data</li>
+                  <li>Request deletion of your account</li>
+                  <li>Opt-out of marketing communications</li>
+                  <li>Export your data</li>
+                </ul>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-lg text-dark-purple mb-2">7. Children's Privacy</h3>
+                <p>Our services are not intended for children under 13 years of age. We do not knowingly collect personal information from children under 13.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-lg text-dark-purple mb-2">8. Data Retention</h3>
+                <p>We retain your personal information for as long as necessary to fulfill the purposes outlined in this policy, unless a longer retention period is required by law.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-lg text-dark-purple mb-2">9. Changes to This Policy</h3>
+                <p>We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new policy on this page with an updated "Last Updated" date.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-lg text-dark-purple mb-2">10. Contact Us</h3>
+                <p>If you have questions about this Privacy Policy, please contact us at:</p>
+                <p className="mt-2">Email: cr8.ceb@gmail.com</p>
+                <p>Instagram: @cr8.ceb</p>
+              </section>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button 
+                onClick={() => setShowPrivacy(false)}
+                className="px-6 py-2 bg-purple text-white rounded-lg hover:bg-dark-purple transition font-semibold"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

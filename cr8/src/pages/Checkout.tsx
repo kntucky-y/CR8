@@ -236,10 +236,25 @@ const Checkout = () => {
   }
 
   return (
-    <div className="bg-bg-color min-h-screen">
-      <div className="px-4 md:px-10 lg:px-20 mx-auto">
-        <Navbar showSearch={true} />
+    <div className="bg-bg-color min-h-screen relative overflow-x-hidden">
+      {/* Background decorations */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <img
+          src="/img/blubber.png"
+          alt="Decoration"
+          className="absolute top-40 left-0 w-1/6 opacity-40 animate-float hidden lg:block"
+        />
+        <img
+          src="/img/bubber.png"
+          alt="Decoration"
+          className="absolute top-[600px] right-0 w-1/6 opacity-30 animate-float hidden lg:block"
+        />
       </div>
+
+      <div className="relative z-10">
+        <div className="px-4 md:px-10 lg:px-20 mx-auto">
+          <Navbar showSearch={true} />
+        </div>
       <main className="px-4 md:px-10 lg:px-20 mx-auto py-12">
         <h1 className="font-poetsen text-darkest-purple text-4xl text-center mb-8">Checkout</h1>
         {cart.length === 0 ? (
@@ -508,6 +523,7 @@ const Checkout = () => {
           orderData={receiptData}
         />
       )}
+      </div>
     </div>
   )
 }

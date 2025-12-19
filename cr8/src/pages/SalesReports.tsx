@@ -33,8 +33,22 @@ const SalesReports = () => {
   };
 
   return (
-    <div className="min-h-screen bg-cream py-8">
-      <div className="max-w-7xl mx-auto px-4">
+    <div className="min-h-screen bg-cream py-8 relative overflow-x-hidden">
+      {/* Background decorations */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <img
+          src="/img/blubber.png"
+          alt="Decoration"
+          className="absolute top-10 left-0 w-1/6 opacity-30 animate-float hidden lg:block"
+        />
+        <img
+          src="/img/bubber.png"
+          alt="Decoration"
+          className="absolute top-[500px] right-0 w-1/6 opacity-30 animate-float hidden lg:block"
+        />
+      </div>
+
+      <div className="relative z-10 max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-outfit font-bold text-dark-purple">Sales Reports</h1>
           <button

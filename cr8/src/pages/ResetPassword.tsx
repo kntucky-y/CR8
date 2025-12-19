@@ -142,10 +142,37 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="bg-bg-color min-h-screen">
-      <div className="px-4 md:px-10 lg:px-20 mx-auto">
-        <Navbar />
+    <div className="bg-bg-color min-h-screen relative overflow-x-hidden">
+      {/* Background decorations */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <img
+          src="/img/bubber.png"
+          alt="Decoration"
+          className="absolute top-0 -right-12 w-1/4 opacity-20 animate-float hidden lg:block"
+        />
+        <img
+          src="/img/blubber.png"
+          alt="Decoration"
+          className="absolute bottom-0 -left-12 w-1/4 opacity-20 animate-float hidden lg:block"
+        />
+        <img
+          src="/img/blubber.png"
+          alt="Decoration"
+          className="absolute top-1/3 -left-16 w-1/5 opacity-15 animate-float hidden lg:block"
+          style={{ animationDelay: '-2s' }}
+        />
+        <img
+          src="/img/bubber.png"
+          alt="Decoration"
+          className="absolute bottom-1/4 -right-16 w-1/5 opacity-15 animate-float hidden lg:block"
+          style={{ animationDelay: '-3s' }}
+        />
       </div>
+
+      <div className="relative z-10">
+        <div className="px-4 md:px-10 lg:px-20 mx-auto">
+          <Navbar />
+        </div>
 
       <div className="flex items-center justify-center px-4 py-12">
         <div className="max-w-md w-full bg-white bg-opacity-50 rounded-xl shadow-lg p-8">
@@ -208,6 +235,7 @@ export default function ResetPassword() {
             </Link>
           </p>
         </div>
+      </div>
       </div>
     </div>
   );

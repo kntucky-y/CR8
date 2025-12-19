@@ -149,7 +149,7 @@ export interface RegisterData {
 export interface CartContextType {
   cart: CartItem[];
   wishlist: WishlistItem[];
-  addToCart: (productId: number, quantity: number) => Promise<void>;
+  addToCart: (productId: number, quantity: number, variantId?: number) => Promise<void>;
   updateCartQuantity: (productId: number, quantity: number) => Promise<void>;
   removeFromCart: (productId: number) => Promise<void>;
   addToWishlist: (productId: number) => Promise<void>;

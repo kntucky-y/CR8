@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 if (session_status() === PHP_SESSION_NONE) {
     session_set_cookie_params([
-        'lifetime' => 86400,
+        'lifetime' => 0,
         'path' => '/',
         'domain' => '.dcism.org',
         'secure' => true,
@@ -197,7 +197,7 @@ switch ($action) {
 
     case 'list':
         $stmt = $conn->prepare("
-            SELECT o.*, COUNT(oi.id) as item_count, d.status as delivery_status, d.tracking_number,
+            SELECT o.*, COUNT(oi.id) as item_count, d.status as delivery_status, d.tracking_number, d.cancel_reason, d.refund_status, d.refund_proof,
                    r.id as review_id, r.rating as review_rating, r.comments as review_comments
             FROM orders o
             LEFT JOIN order_items oi ON o.id = oi.order_id
@@ -217,6 +217,9 @@ switch ($action) {
             $row['item_count'] = (int)$row['item_count'];
             $row['status'] = $row['delivery_status'] ?? 'For Review';
             $row['tracking_number'] = $row['tracking_number'] ?? null;
+            $row['cancel_reason'] = $row['cancel_reason'] ?? null;
+            $row['refund_status'] = $row['refund_status'] ?? null;
+            $row['refund_proof'] = $row['refund_proof'] ?? null;
             $row['review_id'] = $row['review_id'] ? (int)$row['review_id'] : null;
             $row['review_rating'] = $row['review_rating'] ? (int)$row['review_rating'] : null;
             $row['review_comments'] = $row['review_comments'] ?? null;
@@ -299,6 +302,63 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => 'Order not found']);
         }
         $stmt->close();
+        break;
+
+    case 'cancel':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $order_id = intval($input['order_id'] ?? 0);
+        $reason = trim($input['reason'] ?? '');
+
+        if ($order_id <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid order ID']);
+            exit;
+        }
+
+        if (empty($reason)) {
+            echo json_encode(['success' => false, 'message' => 'Cancellation reason is required']);
+            exit;
+        }
+
+        // Verify order belongs to user and is still in 'For Review' status
+        $check_stmt = $conn->prepare("
+            SELECT o.id, d.status 
+            FROM orders o
+            JOIN delivery d ON o.id = d.order_id
+            WHERE o.id = ? AND o.customer_id = ?
+        ");
+        $check_stmt->bind_param('ii', $order_id, $user_id);
+        $check_stmt->execute();
+        $result = $check_stmt->get_result();
+
+        if ($result->num_rows === 0) {
+            echo json_encode(['success' => false, 'message' => 'Order not found']);
+            $check_stmt->close();
+            exit;
+        }
+
+        $order = $result->fetch_assoc();
+        $check_stmt->close();
+
+        if ($order['status'] !== 'For Review') {
+            echo json_encode(['success' => false, 'message' => 'Only orders in "For Review" status can be cancelled']);
+            exit;
+        }
+
+        // Update delivery status to Cancelled and set refund status to Pending
+        $update_stmt = $conn->prepare("
+            UPDATE delivery 
+            SET status = 'Cancelled', cancel_reason = ?, refund_status = 'Pending' 
+            WHERE order_id = ?
+        ");
+        $update_stmt->bind_param('si', $reason, $order_id);
+
+        if ($update_stmt->execute()) {
+            echo json_encode(['success' => true, 'message' => 'Order cancelled successfully']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to cancel order']);
+        }
+
+        $update_stmt->close();
         break;
 
     default:

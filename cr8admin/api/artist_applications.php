@@ -58,6 +58,11 @@ if ($method === 'GET' && !isset($_GET['id'])) {
     
     $applications = [];
     while ($row = $result->fetch_assoc()) {
+        // Convert submitted_at to ISO 8601 format with timezone
+        if (isset($row['submitted_at'])) {
+            $date = new DateTime($row['submitted_at'], new DateTimeZone('Asia/Manila'));
+            $row['submitted_at'] = $date->format('c'); // ISO 8601 format
+        }
         $applications[] = $row;
     }
 
@@ -85,6 +90,12 @@ if ($method === 'GET' && isset($_GET['id'])) {
         $update_stmt->execute();
         $update_stmt->close();
         $application['status'] = 'Read';
+    }
+
+    // Convert submitted_at to ISO 8601 format with timezone
+    if ($application && isset($application['submitted_at'])) {
+        $date = new DateTime($application['submitted_at'], new DateTimeZone('Asia/Manila'));
+        $application['submitted_at'] = $date->format('c'); // ISO 8601 format
     }
 
     $conn->close();

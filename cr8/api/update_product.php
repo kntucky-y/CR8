@@ -193,6 +193,11 @@ if ($stmt->execute()) {
                     }
                 }
                 
+                // If no new image was uploaded, use the existing image
+                if ($variant_image_path === null && isset($variant['existingImage'])) {
+                    $variant_image_path = $variant['existingImage'];
+                }
+                
                 $variant_stmt->bind_param("isids", $product_id, $variant_name, $variant_quantity, $variant_price, $variant_image_path);
                 $variant_stmt->execute();
             }

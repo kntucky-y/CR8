@@ -48,7 +48,10 @@ if ($method === 'GET' && !isset($_GET['id'])) {
             o.proof_path,
             o.proof_delivery,
             (SELECT status FROM delivery d WHERE d.order_id = o.id ORDER BY d.id DESC LIMIT 1) as delivery_status,
-            (SELECT tracking_number FROM delivery d WHERE d.order_id = o.id ORDER BY d.id DESC LIMIT 1) as tracking_number
+            (SELECT tracking_number FROM delivery d WHERE d.order_id = o.id ORDER BY d.id DESC LIMIT 1) as tracking_number,
+            (SELECT cancel_reason FROM delivery d WHERE d.order_id = o.id ORDER BY d.id DESC LIMIT 1) as cancel_reason,
+            (SELECT refund_status FROM delivery d WHERE d.order_id = o.id ORDER BY d.id DESC LIMIT 1) as refund_status,
+            (SELECT refund_proof FROM delivery d WHERE d.order_id = o.id ORDER BY d.id DESC LIMIT 1) as refund_proof
         FROM orders o
         LEFT JOIN users u ON o.customer_id = u.id
     ";
@@ -399,6 +402,86 @@ if ($method === 'POST') {
             $stmt->close();
             sendError('Failed to cancel order: ' . $stmt->error, 500);
         }
+        $conn->close();
+        exit;
+    }
+    
+    // Upload refund proof
+    if ($action === 'upload_refund') {
+        $order_id = intval($_POST['order_id'] ?? 0);
+        
+        if ($order_id <= 0) {
+            sendError('Invalid order ID', 400);
+        }
+        
+        if (!isset($_FILES['refund_proof'])) {
+            sendError('No refund proof file uploaded', 400);
+        }
+        
+        $file = $_FILES['refund_proof'];
+        $allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+        
+        if (!in_array($file['type'], $allowed_types)) {
+            sendError('Invalid file type. Only JPG, PNG, and GIF are allowed.', 400);
+        }
+        
+        if ($file['size'] > 5 * 1024 * 1024) {
+            sendError('File size too large. Maximum 5MB allowed.', 400);
+        }
+        
+        // Create uploads directory if it doesn't exist
+        $upload_dir = '../uploads/refunds/';
+        if (!file_exists($upload_dir)) {
+            mkdir($upload_dir, 0777, true);
+        }
+        
+        $file_extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+        $new_filename = 'refund_' . $order_id . '_' . time() . '.' . $file_extension;
+        $upload_path = $upload_dir . $new_filename;
+        
+        if (move_uploaded_file($file['tmp_name'], $upload_path)) {
+            $db_path = 'uploads/refunds/' . $new_filename;
+            
+            // Update delivery table with refund proof and status
+            $stmt = $conn->prepare("
+                UPDATE delivery 
+                SET refund_proof = ?, refund_status = 'Refunded' 
+                WHERE order_id = ?
+            ");
+            $stmt->bind_param('si', $db_path, $order_id);
+            
+            if ($stmt->execute()) {
+                // Create notification for customer
+                $order_stmt = $conn->prepare("SELECT customer_id, order_no FROM orders WHERE id = ?");
+                $order_stmt->bind_param('i', $order_id);
+                $order_stmt->execute();
+                $order_result = $order_stmt->get_result();
+                
+                if ($order_data = $order_result->fetch_assoc()) {
+                    $customer_id = $order_data['customer_id'];
+                    $order_no = $order_data['order_no'];
+                    
+                    $notif_stmt = $conn->prepare("
+                        INSERT INTO notifications (user_id, type, title, message, related_id) 
+                        VALUES (?, 'refund_processed', 'Refund Processed', ?, ?)
+                    ");
+                    $notification_message = "Your refund for order $order_no has been processed.";
+                    $notif_stmt->bind_param('isi', $customer_id, $notification_message, $order_id);
+                    $notif_stmt->execute();
+                    $notif_stmt->close();
+                }
+                $order_stmt->close();
+                
+                sendResponse(['success' => true, 'message' => 'Refund proof uploaded successfully']);
+            } else {
+                unlink($upload_path); // Delete uploaded file if database update fails
+                sendError('Failed to update refund status', 500);
+            }
+            $stmt->close();
+        } else {
+            sendError('Failed to upload file', 500);
+        }
+        
         $conn->close();
         exit;
     }

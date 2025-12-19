@@ -23,39 +23,44 @@ if ($method === 'GET' && !isset($_GET['id'])) {
     
     $artists_sql = "
         SELECT
-            a.id,
-            a.artist_name,
+            COALESCE(a.id, 0) as id,
+            COALESCE(a.artist_name, CONCAT(u.first_name, ' ', u.last_name)) as artist_name,
             u.email,
             u.created_at as join_date,
             COUNT(p.id) as product_count,
             COALESCE(a.is_archived, 0) as is_archived,
-            a.status
+            COALESCE(a.status, 'active') as status,
+            u.id as user_id,
+            u.role,
+            (CASE WHEN a.id IS NULL THEN 1 ELSE 0 END) as needs_artist_entry
         FROM
-            artists a
+            users u
         LEFT JOIN
-            users u ON a.user_id = u.id
+            artists a ON a.user_id = u.id
         LEFT JOIN
             products p ON a.id = p.artist_id
         WHERE 
-            1=1
+            (u.role = 'artist' OR a.id IS NOT NULL)
     ";
     
     if ($filter === 'active') {
-        $artists_sql .= " AND COALESCE(a.is_archived, 0) = 0 AND a.status = 'active'";
+        $artists_sql .= " AND COALESCE(a.is_archived, 0) = 0 AND COALESCE(a.status, 'active') = 'active'";
     } elseif ($filter === 'archived') {
-        $artists_sql .= " AND a.is_archived = 1";
+        $artists_sql .= " AND COALESCE(a.is_archived, 0) = 1";
+    } elseif ($filter === 'all') {
+        // Show all artists regardless of status
     }
     
     if (!empty($search)) {
         $searchTerm = "%{$search}%";
-        $artists_sql .= " AND (a.artist_name LIKE ? OR u.email LIKE ?)";
+        $artists_sql .= " AND (COALESCE(a.artist_name, CONCAT(u.first_name, ' ', u.last_name)) LIKE ? OR u.email LIKE ?)";
     }
     
     $artists_sql .= "
         GROUP BY
-            a.id, a.artist_name, u.email, u.created_at
+            u.id, a.id, a.artist_name, u.email, u.created_at, u.first_name, u.last_name
         ORDER BY
-            a.artist_name ASC
+            COALESCE(a.artist_name, CONCAT(u.first_name, ' ', u.last_name)) ASC
     ";
     
     if (!empty($search)) {
@@ -246,6 +251,56 @@ if ($method === 'POST' && isset($_GET['action']) && $_GET['action'] === 'delete'
         sendResponse(['success' => true]);
     } else {
         sendError('Failed to delete artist', 500);
+    }
+}
+
+// POST - Create artist entry for user with artist role
+if ($method === 'POST' && isset($_GET['action']) && $_GET['action'] === 'create_entry') {
+    $data = json_decode(file_get_contents('php://input'), true);
+    $user_id = (int)$data['user_id'];
+    
+    // Get user info
+    $user_stmt = $conn->prepare("SELECT first_name, last_name, role FROM users WHERE id = ?");
+    $user_stmt->bind_param("i", $user_id);
+    $user_stmt->execute();
+    $user_result = $user_stmt->get_result();
+    $user = $user_result->fetch_assoc();
+    $user_stmt->close();
+    
+    if (!$user) {
+        $conn->close();
+        sendError('User not found', 404);
+    }
+    
+    if ($user['role'] !== 'artist') {
+        $conn->close();
+        sendError('User is not an artist', 400);
+    }
+    
+    // Check if artist entry already exists
+    $check_stmt = $conn->prepare("SELECT id FROM artists WHERE user_id = ?");
+    $check_stmt->bind_param("i", $user_id);
+    $check_stmt->execute();
+    $check_result = $check_stmt->get_result();
+    if ($check_result->num_rows > 0) {
+        $check_stmt->close();
+        $conn->close();
+        sendError('Artist entry already exists', 400);
+    }
+    $check_stmt->close();
+    
+    // Create artist entry
+    $artist_name = $user['first_name'] . ' ' . $user['last_name'];
+    $insert_stmt = $conn->prepare("INSERT INTO artists (user_id, artist_name, status) VALUES (?, ?, 'active')");
+    $insert_stmt->bind_param("is", $user_id, $artist_name);
+    $success = $insert_stmt->execute();
+    $insert_stmt->close();
+    $conn->close();
+    
+    if ($success) {
+        sendResponse(['success' => true]);
+    } else {
+        sendError('Failed to create artist entry', 500);
     }
 }
 

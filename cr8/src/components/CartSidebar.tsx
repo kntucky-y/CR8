@@ -33,7 +33,11 @@ const CartSidebar = ({ isOpen, onClose }: CartSidebarProps) => {
 
   const handleQuantityChange = async (productId: number, newQuantity: number) => {
     if (newQuantity > 0) {
-      await updateCartQuantity(productId, newQuantity)
+      try {
+        await updateCartQuantity(productId, newQuantity)
+      } catch (error: any) {
+        alert(error.message || 'Failed to update quantity')
+      }
     }
   }
 
