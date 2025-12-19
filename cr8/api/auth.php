@@ -229,8 +229,8 @@ switch ($action) {
             $mail->isSMTP();
             $mail->Host       = 'smtp.gmail.com';
             $mail->SMTPAuth   = true;
-            $mail->Username   = 'ladykgutz@gmail.com';
-            $mail->Password   = 'rsqgzgbfvbmvwchd';
+            $mail->Username   = ''; //Removed for security purposes
+            $mail->Password   = ''; //Removed for security purposes
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port       = 587;
             $mail->SMTPOptions = array(
