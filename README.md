@@ -30,7 +30,7 @@ These captures are from the live CR8 website:
 
 <p align="center">
   <img src="docs/screenshots/cr8-full-viewport.png" width="100%" alt="CR8 live homepage" />
-  <img src="docs/screenshots/cr8-full-viewport.png" width="100%" alt="CR8 live shop page" />
+  <img src="docs/screenshots/cr8-shop-full-viewport.png" width="100%" alt="CR8 live shop page" />
 </p>
 
 CR8's product catalog is backed by brand and product imagery in
