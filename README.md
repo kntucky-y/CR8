@@ -9,8 +9,6 @@
   <a href="https://github.com/kntucky-y/CR8"><img src="https://img.shields.io/badge/Repository-181717?style=for-the-badge&logo=github&logoColor=white" alt="Repository" /></a>
 </p>
 
-<img src="https://raw.githubusercontent.com/kntucky-y/CR8/main/cr8/img/cr8-logo.png" width="220" alt="CR8 logo" />
-
 </div>
 
 ## Overview
@@ -25,12 +23,14 @@ and a shared PHP JSON API:
 The project is deployed on the school server and includes the frontend assets,
 product imagery, and PHP dependencies needed by the running system.
 
-## Screenshots and visual assets
+## Website preview
+
+These captures are from the live CR8 website:
+<https://cr8.dcism.org>.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/kntucky-y/CR8/main/cr8/img/about-friends.png" width="30%" alt="CR8 storefront visual" />
-  <img src="https://raw.githubusercontent.com/kntucky-y/CR8/main/cr8/img/dashboardbg.jpg" width="30%" alt="CR8 dashboard background" />
-  <img src="https://raw.githubusercontent.com/kntucky-y/CR8/main/cr8/img/bg.png" width="30%" alt="CR8 visual background" />
+  <img src="docs/screenshots/live-home.png" width="48%" alt="CR8 live homepage" />
+  <img src="docs/screenshots/live-shop.png" width="48%" alt="CR8 live shop page" />
 </p>
 
 CR8's product catalog is backed by brand and product imagery in
