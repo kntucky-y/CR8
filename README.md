@@ -29,8 +29,8 @@ These captures are from the live CR8 website:
 <https://cr8.dcism.org>.
 
 <p align="center">
-  <img src="docs/screenshots/cr8-home-natural.png" width="100%" alt="CR8 live homepage" />
-  <img src="docs/screenshots/cr8-shop-natural.png" width="100%" alt="CR8 live shop page" />
+  <img src="docs/screenshots/cr8-full-viewport.png" width="100%" alt="CR8 live homepage" />
+  <img src="docs/screenshots/cr8-full-viewport.png" width="100%" alt="CR8 live shop page" />
 </p>
 
 CR8's product catalog is backed by brand and product imagery in
